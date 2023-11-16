@@ -1,0 +1,3 @@
+﻿  main.cpp
+C:\Users\Josh\OneDrive - The University of Texas at Austin\Desktop\School\Fall 2023\Clarke Research\Clarke_Fa23\main.cpp(181,82): warning C4244: 'argument': conversion from 'double' to 'int', possible loss of data
+  Clarke_Fa23.vcxproj -> C:\Users\Josh\OneDrive - The University of Texas at Austin\Desktop\School\Fall 2023\Clarke Research\x64\Debug\Clarke_Fa23.exe
