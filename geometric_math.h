@@ -232,6 +232,18 @@ class geometric_math
 
 
 		void PrintMatrix(std::vector<std::vector<double>> mat, std::string mat_name);
+
+		std::vector<std::vector<double>> Eye(int dimension);
+
+
+		std::vector<std::vector<double>> XRotationMatrix(double angle);
+		std::vector<std::vector<double>> YRotationMatrix(double angle);
+		std::vector<std::vector<double>> ZRotationMatrix(double angle);
+
+		std::vector<std::vector<double>> EulerAngleRotationMatrix(std::vector<double> euler_angles, std::string rotation_axes);
+
+
+		std::vector<double> Linspace(double x0, double x_final, int steps);
 };
 
 

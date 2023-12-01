@@ -210,22 +210,23 @@ void wingbox::UpdateDashpot(int dp_index, double dt, double delta_phi)
 	// Seems at least partially wrong, but good enough for now. Also, doesn't account for the fact that the dashpot position can change
 	vector<double> dp_arm = math.SumVectors(m_dp_positions[dp_index], math.Scalar_x_Vector(-1.0, m_rotation_point));
 
-	// Does not incorporate the dp_axis in any way which is very problematic
-	/*
-	double R = math.VectorNorm(dp_arm, 2);
-
-	double dist = R * delta_phi;
-	double new_vel = dist / dt;
-	*/
-
 	// Find the effect that the rotation has on the damper
 	vector<double> v_dir = math.CrossProduct3D(m_dp_axes[dp_index], dp_arm);
+
 	v_dir = math.Scalar_x_Vector(1.0 / math.VectorNorm(v_dir, 2), v_dir);
 
 	double r_mag = math.VectorNorm(dp_arm, 2);
 
 	vector<double> vel = math.Scalar_x_Vector(r_mag * delta_phi / dt, v_dir);
+
 	double new_vel = math.VectorNorm(vel, 2);
+
+
+	// REALLY STUPID WAY TO DO THIS
+	if (delta_phi > 0)
+	{
+		new_vel *= -1.0;
+	}
 
 	dp->SetVelocity(new_vel);
 }
@@ -340,14 +341,13 @@ void wingbox::UpdateWingboxMoment()
 
 		force_vec = math.Scalar_x_Vector(force_mag, m_ls_axes[i]);
 
-		//math.PrintMatrix({ force_vec }, "Force Vec");
-
 		moment_arm = math.SumVectors(pos, rot_point_term);
 		moment = math.CrossProduct3D(moment_arm, force_vec);
 
-		//math.PrintMatrix({ moment }, "LS Moment");
-
 		wb_total_moment = math.SumVectors(wb_total_moment, moment);
+
+		//math.PrintMatrix({ force_vec }, "LS Force");
+		//math.PrintMatrix({ moment }, "LS Moment");
 	}
 
 	for (int i = 0; i < m_dp_count; i++)
@@ -361,6 +361,9 @@ void wingbox::UpdateWingboxMoment()
 		moment = math.CrossProduct3D(moment_arm, force_vec);
 
 		wb_total_moment = math.SumVectors(wb_total_moment, moment);
+
+		//math.PrintMatrix({ force_vec }, "DP Force");
+		//math.PrintMatrix({ moment }, "DP Moment");
 	}
 
 
@@ -371,9 +374,11 @@ void wingbox::UpdateWingboxMoment()
 		moment = math.Scalar_x_Vector(moment_mag, m_ts_axes[i]);
 
 		wb_total_moment = math.SumVectors(wb_total_moment, moment);
+
+		//math.PrintMatrix({ moment }, "TS Moment");
 	}
 
-
+	
 
 	m_wb_total_moment = wb_total_moment;
 }

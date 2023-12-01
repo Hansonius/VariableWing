@@ -35,6 +35,26 @@ void write_state(ofstream* file, double time, int active_as_count, vector<double
 }
 
 
+vector<double> velocity_schedule(vector<double> time, double v0, double v_final, int power_fit)
+{
+	double t0 = time[0];
+	int timesteps = time.size();
+	double duration = time[timesteps - 1] - t0;  // t_final - t0
+
+	// initialize the velocities as a vector of zeroes
+	vector<double> vel(timesteps, 0.0);
+
+	for (int i = 0; i < timesteps; i++)
+	{
+		vel[i] = v0 + (v_final - v0) * pow(((time[i] - t0) / duration), power_fit);
+	}
+
+	//geometric_math math;
+	//math.PrintMatrix({ vel }, "Velocity Vec");
+
+	return vel;
+}
+
 
 int main()
 {
@@ -53,13 +73,13 @@ int main()
 	// Set up a linear spring
 	linear_spring ls0;
 	ls0.SetMaterial(steel);
-	ls0.SetActiveCoilCount(25);
+	ls0.SetActiveCoilCount(10);
 	ls0.SetTotalCoilCount(25);
 	ls0.SetWireDiameter(0.1); // 1 cm
 	ls0.SetCoilDiameter(0.2); // 6ish" in meters
 	ls0.SetMaximumLength(2.0); // m
 	ls0.SetMinimumLength(0.0);
-	ls0.SetRelaxedPitch(0.04); // m
+	ls0.SetRelaxedPitch(0.1); // m
 
 
 
@@ -71,7 +91,7 @@ int main()
 	dashpot dp0;
 	dp0.SetMass(10); // kg
 	dp0.SetMaxForce(10000000000000000); // N
-	dp0.SetDampingCoeff(4500); // Ns/m
+	dp0.SetDampingCoeff(1000.0); // Ns/m
 
 	vector<double> dp0_pos = { 0.0, -0.5, 0.0 };
 	vector<double> dp0_axis = { 1.0, 0.0, 0.0 };
@@ -82,7 +102,7 @@ int main()
 	torsion_spring ts0;
 	ts0.SetMaterial(steel);
 	ts0.SetMass(10);
-	ts0.SetWireDiameter(0.02); // m
+	ts0.SetWireDiameter(0.01); // m
 	ts0.SetCoilDiameter(0.2); // m
 	ts0.SetActiveCoilCount(25);
 	ts0.SetRelaxedArmAngle(0.0); // rad
@@ -184,9 +204,12 @@ int main()
 	// Wild guess
 	LL.SetMomentOfInertia_CM({ { 10.0, 0.0, 0.0 },
 		                       { 0.0, 100.0, 0.0 }, 
-		                       { 0.0, 0.0, 200.0 } });
+		                       { 0.0, 0.0, 400.0 } });
 	LL.SetMass(500); // kg
 	
+
+
+
 
 
 
@@ -207,27 +230,42 @@ int main()
 	vector<double> moment_point = { 0.0, 0.0, 0.0 };
 	vw.SetMomentPoint(moment_point);
 
+
+
+	// Set up the simulation times
+	double t0 = 0.0;
+	double tmax = 200;
+	int timesteps = 2000;
+
+	vector<double> time = math.Linspace(t0, tmax, timesteps);
+
 	// Define this in the lifting line frame
-	vector<double> freestream = { 0.0, -100.0, 0.0 }; // m/s
-	vw.SetFreestreamVelocity(freestream);
+	//vector<double> freestream = { 0.0, -100.0, 0.0 }; // m/s
+	//vw.SetFreestreamVelocity(freestream);
 	
+	double vy_0 = -0.001;
+	double vy_final = -100.0; // m/s
+	int power_fit = 0.0;
+
+	// make a time vector for the velocity scheduling and then everything after that will be a constant velocity at the last value
+	vector<double> schedule = math.Linspace(t0, tmax / 2, timesteps / 2);
+	vector<double> freestream_y = velocity_schedule(schedule, vy_0, vy_final, power_fit);
+
+	// hold the last value constant for the rest of the time
+	freestream_y.resize(timesteps, vy_final);
+
+	vw.SetFreestreamVelocity({ 0.0, freestream_y[0], 0.0 });
+
 	// Ensure that you have this before starting the simulation
 	vw.Setup();
 
 	
 
-
-
-
-
-	// Set up the simulation
-	double time = 0.0;
-	double timestep = 0.1;
-	double tmax = 1000;
-
-
 	// Writing to a file
-	ofstream output_file("Data/variable_wing_data_stiff.txt");
+	string folder = "Data/";
+	string output_file_name = "vw_step_low_k.txt";
+
+	ofstream output_file(folder.append(output_file_name));
 
 	if (!output_file.is_open())
 	{
@@ -243,18 +281,21 @@ int main()
 
 	bool failed = false;
 
-	while (time <= tmax)
+	double dt;
+	for(int i = 0; i < timesteps-1; i++)
 	{
-		//cout << "T = " << time << "s" << endl;
-		vw.AdvanceTime(timestep);
+		// Update the freestream in time
+		vw.SetFreestreamVelocity({ 0.0, freestream_y[i], 0.0 });
+
+		// Update the varaible wing
+		dt = time[i+1] - time[i];
+		vw.AdvanceTime(dt);
 
 		// Writing to the file at each timestep
 		active_as_count = vw.GetActiveAirstationCount();
 		phi = vw.GetPhi();
 		phi_dot = vw.GetPhiDot();
-		write_state(&output_file, time, active_as_count, phi, phi_dot);
-
-		time += timestep;
+		write_state(&output_file, time[i], active_as_count, phi, phi_dot);
 
 		failed = vw.fail_check;
 		if (failed == true)
@@ -269,5 +310,9 @@ int main()
 
 	return 0;
 }
+
+
+
+
 
 

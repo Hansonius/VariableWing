@@ -75,10 +75,13 @@ void variable_wing::AdvanceTime(double dt)
 	UpdateRCAngle(dt);
 
 	// Advance the lifting line geometry checks
-	UpdateAirstations();
+	UpdateLiftingLine();
 
 	// Updates the airstation activation vector
 	CheckAirstationActivation();
+
+	// Update the freestream velocities at the airstations
+	UpdateFlow();
 
 	// Update the aerodynamics and get the new forces and moments
 	m_LL.UpdateAirstationsAerodynamics();
@@ -112,12 +115,14 @@ void variable_wing::UpdateRCAngle(double dt)
 	
 
 	//math.PrintMatrix(off_axis_moi, "Off Axis MOI");
-	
+
 	vector<vector<double>> LL_moi_0 = math.SumMatrices(m_LL.GetMomentOfInertia_CM(), off_axis_moi);
 	
 	m_total_moment_of_inertia = math.SumMatrices(LL_moi_0, m_wb.GetMomentOfInertia());
 
 	//math.PrintMatrix(math.Invert(m_total_moment_of_inertia), "Inverse MOI");
+
+
 
 	// Euler's method. Ewww!
 	m_phi_2_dot = math.Matrix_x_Vector(math.Invert(m_total_moment_of_inertia), m_net_moment);
@@ -141,7 +146,7 @@ void variable_wing::UpdateRCAngle(double dt)
 }
 
 
-void variable_wing::UpdateAirstations()
+void variable_wing::UpdateLiftingLine()
 {
 	vector<double> pos;
 	vector<double> cw_vec;
@@ -173,10 +178,20 @@ void variable_wing::UpdateAirstations()
 	m_LL.SetAirstationChordwiseVectors(as_cw_vecs);
 	m_LL.SetAirstationNormalVectors(as_norm_vecs);
 
+
+
 	// Find the center of mass again
 	vector<double> center_of_mass_pos = math.RotateVector(m_LL.GetCenterOfMassPosition(), z_axis, m_delta_phi);
 	m_LL.SetCenterOfMassPosition(center_of_mass_pos);
 
+	// Rotate the moment of inertia matrix as well
+	vector<vector<double>> rotation_matrix = math.EulerAngleRotationMatrix({ 0.0, 0.0, m_delta_phi }, "XYZ");
+	//math.PrintMatrix(rotation_matrix, "Full Euler Angle Rotation Matrix");
+
+	m_LL.SetMomentOfInertia_CM(math.Matrix_x_Matrix(rotation_matrix, m_LL.GetMomentOfInertia_CM()));
+
+
+	//math.PrintMatrix(m_LL.GetMomentOfInertia_CM(), "Wing MOI");
 	//math.PrintMatrix({ center_of_mass_pos }, "LL COM Pos");
 }
 
@@ -210,6 +225,16 @@ void variable_wing::UpdateAirstationActivation()
 }
 
 
+void variable_wing::UpdateFlow()
+{
+	// Update the freestreams of each of the airstations
+	for (int i = 0; i < m_LL.GetNumberofAirstations(); i++)
+	{
+		m_LL.SetAirstationFreestream(m_freestream, i);
+	}
+}
+
+
 
 void variable_wing::SetFreestreamVelocity(vector<double> freestream)
 {
@@ -220,6 +245,7 @@ void variable_wing::SetFreestreamVelocity(vector<double> freestream)
 void variable_wing::Setup()
 {
 	m_wb.Setup();
+
 	m_LL.GeometrySetup();
 
 
@@ -233,7 +259,6 @@ void variable_wing::Setup()
 	m_LL.TotalForceMomentCalc();
 
 	math.PrintMatrix({ m_LL.GetTotalForces() }, "Total Forces at t = 0");
-	
 }
 
 
@@ -269,8 +294,3 @@ int variable_wing::GetActiveAirstationCount()
 	return active_as_count;
 }
 
-
-void variable_wing::CalcVelocities()
-{
-
-}

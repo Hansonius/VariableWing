@@ -68,12 +68,12 @@ class variable_wing
 
 
 		void UpdateRCAngle(double dt);
-		void UpdateAirstations();
+		void UpdateLiftingLine();
 		void CheckAirstationActivation();
 		void UpdateAirstationActivation();
 
 
-		void CalcVelocities();
+		void UpdateFlow();
 
 
 };

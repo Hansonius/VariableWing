@@ -553,7 +553,7 @@ vector<vector<double>> geometric_math::Invert(vector<vector<double>> mat)
 double geometric_math::Cofactor(vector<vector<double>> mat, int row, int col)
 {
 	int N = mat.size();
-	vector<vector<double>> submat(N - 1, vector<double>(N-1, 0.0));
+	vector<vector<double>> submat(N-1, vector<double>(N-1, 0.0));
 
 	int submat_row = 0;
 	for (int i = 0; i < N; i++)
@@ -641,4 +641,108 @@ void geometric_math::PrintMatrix(vector<vector<double>> mat, string mat_name)
 
 		cout << endl;
 	}
+}
+
+
+vector<vector<double>> geometric_math::Eye(int dimension)
+{
+	if (dimension <= 0)
+	{
+		cerr << "Improper dimension. Please use a positive integer value" << endl;
+	}
+
+	vector<vector<double>> identity(dimension, vector<double>(dimension, 0));
+
+	for (int i = 0; i < dimension; i++)
+	{
+		identity[i][i] = 1.0;
+	}
+
+	return identity;
+}
+
+
+vector<vector<double>> geometric_math::XRotationMatrix(double angle)
+{
+	vector<vector<double>> x_rotation_matrix = { {1,      0,             0    },
+												 {0,  cos(angle),  -sin(angle)},
+												 {0,  sin(angle),   cos(angle)} };
+	return x_rotation_matrix;
+}
+
+vector<vector<double>> geometric_math::YRotationMatrix(double angle)
+{
+	vector<vector<double>> y_rotation_matrix = { {cos(angle),    0,    sin(angle)},
+												 {     0,        1,          0   },
+												 {-sin(angle),   0,    cos(angle)} };
+	return y_rotation_matrix;
+}
+
+
+vector<vector<double>> geometric_math::ZRotationMatrix(double angle)
+{
+	vector<vector<double>> z_rotation_matrix = { {cos(angle),  -sin(angle),  0},
+												 {sin(angle),  cos(angle),   0},
+												 {    0,            0,       1} };
+	return z_rotation_matrix;
+}
+
+
+vector<vector<double>> geometric_math::EulerAngleRotationMatrix(vector<double> euler_angles, string rotation_axes)
+{
+	// Initialize the matrix with an identity matrix
+	vector<vector<double>> rotation_matrix = Eye(3);
+
+
+	if (euler_angles.size() != 3)
+	{
+		cerr << "Insufficient Euler Angle Specification. Please use three doubles corresponding to a certain axis." << endl;
+	}
+
+	if (rotation_axes.length() != 3)
+	{
+		cerr << "Insufficient axis specification. Please use the form of 'XYZ', 'ZXZ', etc." << endl;
+	}
+
+	// Loop through the different axes and assemble the matrix
+	for (int i = 0; i < rotation_axes.length(); i++)
+	{
+		if (rotation_axes[i] == 'X')
+		{
+			rotation_matrix = Matrix_x_Matrix(XRotationMatrix(euler_angles[i]), rotation_matrix);
+		}
+
+		else if (rotation_axes[i] == 'Y')
+		{
+			rotation_matrix = Matrix_x_Matrix(YRotationMatrix(euler_angles[i]), rotation_matrix);
+		}
+
+		else if (rotation_axes[i] == 'Z')
+		{
+			rotation_matrix = Matrix_x_Matrix(ZRotationMatrix(euler_angles[i]), rotation_matrix);
+		}
+
+		else
+		{
+			cout << "Improper axis specification. Use 'X', 'Y', 'Z' only." << endl;
+		}
+	}
+
+	return rotation_matrix;
+}
+
+
+vector<double> geometric_math::Linspace(double x0, double x_final, int steps)
+{
+	// Initialize the vector as 0's
+	vector<double> x(steps, 0.0);
+
+	double delta_x = (x_final - x0) / (double(steps) - 1.0);
+
+	for (int i = 0; i < steps; i++)
+	{
+		x[i] = x0 + delta_x * i;
+	}
+
+	return x;
 }
